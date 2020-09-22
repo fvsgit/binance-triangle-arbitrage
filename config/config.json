@@ -1,0 +1,52 @@
+{
+
+    "KEYS": {
+        "API": null,
+        "SECRET": null
+    },
+
+    "INVESTMENT": {
+        "BASE": null,
+        "MIN": null,
+        "MAX": null,
+        "STEP": null
+    },
+
+    "TRADING": {
+        "ENABLED": null,
+        "EXECUTION_STRATEGY": "linear",
+        "EXECUTION_TEMPLATE": ["BUY", "SELL", "SELL"],
+        "EXECUTION_CAP": null,
+        "TAKER_FEE": null,
+        "PROFIT_THRESHOLD": null,
+        "AGE_THRESHOLD": null,
+        "WHITELIST": []
+    },
+
+    "HUD": {
+        "ENABLED": true,
+        "ARB_COUNT": 10
+    },
+
+    "LOG": {
+        "LEVEL": null,
+        "PRETTY_PRINT": true
+    },
+
+    "DEPTH": {
+        "SIZE": null
+    },
+
+    "WEBSOCKETS": {
+        "BUNDLE_SIZE": 1,
+        "INITIALIZATION_INTERVAL": 75
+    },
+
+    "TIMING": {
+        "RECEIVE_WINDOW": 5000,
+        "USE_SERVER_TIME": false,
+        "CALCULATION_COOLDOWN": null,
+        "STATUS_UPDATE_INTERVAL": 120000
+    }
+
+}
