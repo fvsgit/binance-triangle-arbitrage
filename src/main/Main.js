@@ -1,9 +1,9 @@
 require('dotenv').config();
 const CONFIG = require('../../config/config');
 
-//Set the API key from the environment variables
-CONFIG.KEYS.API = process.env.API_KEY;
-CONFIG.KEYS.SECRET = process.env.API_SECRET;
+//We want to load keys and configurable parameters from the environment variables. This
+//allows for flexible re-deployment in the azure container instances
+updateConfigFromEnv();
 
 const logger = require('./Loggers');
 const Util = require('./Util');
@@ -25,6 +25,26 @@ logger.performance.info(logger.LINE);
 if (CONFIG.TRADING.ENABLED) console.log(`WARNING! Order execution is enabled!\n`);
 
 process.on('uncaughtException', handleError);
+
+function updateConfigFromEnv(){
+
+    //Update the config from the environment variables if they exit 
+    if(process.env.API_KEY && process.env.API_KEY.length >= 1) CONFIG.KEYS.API = process.env.API_KEY;
+    if(process.env.API_SECRET && process.env.API_SECRET.length >= 1) CONFIG.KEYS.SECRET = process.env.API_SECRET;
+    if(process.env.INVESTMENT_BASE && process.env.INVESTMENT_BASE.length >= 1) CONFIG.INVESTMENT.BASE = process.env.INVESTMENT_BASE;
+    if(process.env.INVESTMENT_MIN && process.env.INVESTMENT_MIN.length >= 1) CONFIG.INVESTMENT.MIN = parseFloat(process.env.INVESTMENT_MIN);
+    if(process.env.INVESTMENT_MAX && process.env.INVESTMENT_MAX.length >= 1) CONFIG.INVESTMENT.MAX = parseFloat(process.env.INVESTMENT_MAX);
+    if(process.env.INVESTMENT_STEP && process.env.INVESTMENT_STEP.length >= 1) CONFIG.INVESTMENT.STEP = parseFloat(process.env.INVESTMENT_STEP);
+    if(process.env.TRADING_ENABLED && process.env.TRADING_ENABLED.length >= 1) CONFIG.TRADING.ENABLED = (process.env.TRADING_ENABLED == "true");
+    if(process.env.TRADING_EXECUTION_CAP && process.env.TRADING_EXECUTION_CAP.length >= 1) CONFIG.TRADING.EXECUTION_CAP = parseInt(process.env.TRADING_EXECUTION_CAP);
+    if(process.env.TRADING_TAKER_FEE && process.env.TRADING_TAKER_FEE.length >= 1) CONFIG.TRADING.TAKER_FEE = parseFloat(process.env.TRADING_TAKER_FEE);
+    if(process.env.TRADING_PROFIT_THRESHOLD && process.env.TRADING_PROFIT_THRESHOLD.length >= 1) CONFIG.TRADING.PROFIT_THRESHOLD = parseFloat(process.env.TRADING_PROFIT_THRESHOLD);
+    if(process.env.TRADING_AGE_THRESHOLD && process.env.TRADING_AGE_THRESHOLD.length >= 1) CONFIG.TRADING.AGE_THRESHOLD = parseInt(process.env.TRADING_AGE_THRESHOLD);
+    if(process.env.LOG_LEVEL && process.env.LOG_LEVEL.length >= 1) CONFIG.LOG.LEVEL = process.env.LOG_LEVEL;
+    if(process.env.DEPTH_SIZE && process.env.DEPTH_SIZE.length >= 1) CONFIG.DEPTH.SIZE = parseInt(process.env.DEPTH_SIZE);
+    if(process.env.CALCULATION_COOLDOWN && process.env.CALCULATION_COOLDOWN.length >= 1) CONFIG.TIMING.CALCULATION_COOLDOWN = parseInt(process.env.CALCULATION_COOLDOWN);
+    
+}
 
 checkConfig()
     .then(si.networkStats)
