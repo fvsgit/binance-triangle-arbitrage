@@ -1,9 +1,16 @@
 require('dotenv').config();
 const CONFIG = require('../../config/config');
+var azure = require('azure-storage');
 
 //We want to load keys and configurable parameters from the environment variables. This
 //allows for flexible re-deployment in the azure container instances
 updateConfigFromEnv();
+
+//Setup the azure storage tables
+var missedTable = null;
+var executedTable = null;
+var potentialTable = null;
+setupAzureTables();
 
 const logger = require('./Loggers');
 const Util = require('./Util');
@@ -26,24 +33,54 @@ if (CONFIG.TRADING.ENABLED) console.log(`WARNING! Order execution is enabled!\n`
 
 process.on('uncaughtException', handleError);
 
-function updateConfigFromEnv(){
+function setupAzureTables() {
+
+    missedTable = azure.createTableService();
+    missedTable.createTableIfNotExists(process.env.AZURE_MISSED_TABLE, function (error, result, response) {
+        if (!error) {
+            console.log("Azure table ready: " + process.env.AZURE_MISSED_TABLE);
+        } else {
+            console.error("Could not setup the azure table: " + process.env.AZURE_MISSED_TABLE);
+        }
+    });
+
+    executedTable = azure.createTableService();
+    executedTable.createTableIfNotExists(process.env.AZURE_EXECUTED_TABLE, function (error, result, response) {
+        if (!error) {
+            console.log("Azure table ready: " + process.env.AZURE_EXECUTED_TABLE);
+        } else {
+            console.error("Could not setup the azure table: " + process.env.AZURE_EXECUTED_TABLE);
+        }
+    });
+
+    potentialTable = azure.createTableService();
+    potentialTable.createTableIfNotExists(process.env.AZURE_POTENTIAL_TABLE, function (error, result, response) {
+        if (!error) {
+            console.log("Azure table ready: " + process.env.AZURE_POTENTIAL_TABLE);
+        } else {
+            console.error("Could not setup the azure table: " + process.env.AZURE_POTENTIAL_TABLE);
+        }
+    });
+}
+
+function updateConfigFromEnv() {
 
     //Update the config from the environment variables if they exit 
-    if(process.env.API_KEY && process.env.API_KEY.length >= 1) CONFIG.KEYS.API = process.env.API_KEY;
-    if(process.env.API_SECRET && process.env.API_SECRET.length >= 1) CONFIG.KEYS.SECRET = process.env.API_SECRET;
-    if(process.env.INVESTMENT_BASE && process.env.INVESTMENT_BASE.length >= 1) CONFIG.INVESTMENT.BASE = process.env.INVESTMENT_BASE;
-    if(process.env.INVESTMENT_MIN && process.env.INVESTMENT_MIN.length >= 1) CONFIG.INVESTMENT.MIN = parseFloat(process.env.INVESTMENT_MIN);
-    if(process.env.INVESTMENT_MAX && process.env.INVESTMENT_MAX.length >= 1) CONFIG.INVESTMENT.MAX = parseFloat(process.env.INVESTMENT_MAX);
-    if(process.env.INVESTMENT_STEP && process.env.INVESTMENT_STEP.length >= 1) CONFIG.INVESTMENT.STEP = parseFloat(process.env.INVESTMENT_STEP);
-    if(process.env.TRADING_ENABLED && process.env.TRADING_ENABLED.length >= 1) CONFIG.TRADING.ENABLED = (process.env.TRADING_ENABLED == "true");
-    if(process.env.TRADING_EXECUTION_CAP && process.env.TRADING_EXECUTION_CAP.length >= 1) CONFIG.TRADING.EXECUTION_CAP = parseInt(process.env.TRADING_EXECUTION_CAP);
-    if(process.env.TRADING_TAKER_FEE && process.env.TRADING_TAKER_FEE.length >= 1) CONFIG.TRADING.TAKER_FEE = parseFloat(process.env.TRADING_TAKER_FEE);
-    if(process.env.TRADING_PROFIT_THRESHOLD && process.env.TRADING_PROFIT_THRESHOLD.length >= 1) CONFIG.TRADING.PROFIT_THRESHOLD = parseFloat(process.env.TRADING_PROFIT_THRESHOLD);
-    if(process.env.TRADING_AGE_THRESHOLD && process.env.TRADING_AGE_THRESHOLD.length >= 1) CONFIG.TRADING.AGE_THRESHOLD = parseInt(process.env.TRADING_AGE_THRESHOLD);
-    if(process.env.LOG_LEVEL && process.env.LOG_LEVEL.length >= 1) CONFIG.LOG.LEVEL = process.env.LOG_LEVEL;
-    if(process.env.DEPTH_SIZE && process.env.DEPTH_SIZE.length >= 1) CONFIG.DEPTH.SIZE = parseInt(process.env.DEPTH_SIZE);
-    if(process.env.CALCULATION_COOLDOWN && process.env.CALCULATION_COOLDOWN.length >= 1) CONFIG.TIMING.CALCULATION_COOLDOWN = parseInt(process.env.CALCULATION_COOLDOWN);
-    
+    if (process.env.API_KEY && process.env.API_KEY.length >= 1) CONFIG.KEYS.API = process.env.API_KEY;
+    if (process.env.API_SECRET && process.env.API_SECRET.length >= 1) CONFIG.KEYS.SECRET = process.env.API_SECRET;
+    if (process.env.INVESTMENT_BASE && process.env.INVESTMENT_BASE.length >= 1) CONFIG.INVESTMENT.BASE = process.env.INVESTMENT_BASE;
+    if (process.env.INVESTMENT_MIN && process.env.INVESTMENT_MIN.length >= 1) CONFIG.INVESTMENT.MIN = parseFloat(process.env.INVESTMENT_MIN);
+    if (process.env.INVESTMENT_MAX && process.env.INVESTMENT_MAX.length >= 1) CONFIG.INVESTMENT.MAX = parseFloat(process.env.INVESTMENT_MAX);
+    if (process.env.INVESTMENT_STEP && process.env.INVESTMENT_STEP.length >= 1) CONFIG.INVESTMENT.STEP = parseFloat(process.env.INVESTMENT_STEP);
+    if (process.env.TRADING_ENABLED && process.env.TRADING_ENABLED.length >= 1) CONFIG.TRADING.ENABLED = (process.env.TRADING_ENABLED == "true");
+    if (process.env.TRADING_EXECUTION_CAP && process.env.TRADING_EXECUTION_CAP.length >= 1) CONFIG.TRADING.EXECUTION_CAP = parseInt(process.env.TRADING_EXECUTION_CAP);
+    if (process.env.TRADING_TAKER_FEE && process.env.TRADING_TAKER_FEE.length >= 1) CONFIG.TRADING.TAKER_FEE = parseFloat(process.env.TRADING_TAKER_FEE);
+    if (process.env.TRADING_PROFIT_THRESHOLD && process.env.TRADING_PROFIT_THRESHOLD.length >= 1) CONFIG.TRADING.PROFIT_THRESHOLD = parseFloat(process.env.TRADING_PROFIT_THRESHOLD);
+    if (process.env.TRADING_AGE_THRESHOLD && process.env.TRADING_AGE_THRESHOLD.length >= 1) CONFIG.TRADING.AGE_THRESHOLD = parseInt(process.env.TRADING_AGE_THRESHOLD);
+    if (process.env.LOG_LEVEL && process.env.LOG_LEVEL.length >= 1) CONFIG.LOG.LEVEL = process.env.LOG_LEVEL;
+    if (process.env.DEPTH_SIZE && process.env.DEPTH_SIZE.length >= 1) CONFIG.DEPTH.SIZE = parseInt(process.env.DEPTH_SIZE);
+    if (process.env.CALCULATION_COOLDOWN && process.env.CALCULATION_COOLDOWN.length >= 1) CONFIG.TIMING.CALCULATION_COOLDOWN = parseInt(process.env.CALCULATION_COOLDOWN);
+
 }
 
 checkConfig()
@@ -91,15 +128,71 @@ checkConfig()
         // Allow time for depth caches to populate
         setTimeout(calculateArbitrage, 6000);
         setInterval(displayStatusUpdate, CONFIG.TIMING.STATUS_UPDATE_INTERVAL);
+
+        //Write opportunities to azure for further analysis
+        setInterval(savePotentialOpportunities, 1000); 
+        setInterval(saveExecutedOpportunities, 1000);
+        setInterval(saveMissedOpportunities, 5000);
     })
     .catch(handleError);
+
+function savePotentialOpportunities() {
+
+    //Check if there were potential opportunities
+    if (ArbitrageExecution.potentialOpportunities.length >= 1) {
+
+        //Get the first pait in the array and remove it from the main array
+        const firstElement = ArbitrageExecution.potentialOpportunities.shift();
+
+        missedTable.insertEntity(process.env.AZURE_POTENTIAL_TABLE, firstElement, function (error, result, response) {
+            if (error) {
+                console.error("Could not log the potential opportunity in the table");
+            }
+        });
+    }
+
+}
+
+function saveExecutedOpportunities() {
+
+    //Check if there were executed opportunities
+    if (ArbitrageExecution.executedOpportunities.length >= 1) {
+
+        //Get the first pait in the array and remove it from the main array
+        const firstElement = ArbitrageExecution.executedOpportunities.shift();
+
+        executedTable.insertEntity(process.env.AZURE_EXECUTED_TABLE, firstElement, function (error, result, response) {
+            if (error) {
+                console.error("Could not log the potential opportunity in the table");
+            }
+        });
+    }
+
+}
+
+function saveMissedOpportunities() {
+
+    //Check if there were missed opportunities
+    if (ArbitrageExecution.missedOpportunities.length >= 1) {
+
+        //Get the first pait in the array and remove it from the main array
+        const firstElement = ArbitrageExecution.missedOpportunities.shift();
+
+        missedTable.insertEntity(process.env.AZURE_MISSED_TABLE, firstElement, function (error, result, response) {
+            if (error) {
+                console.error("Could not log the missed opportunity in the table");
+            }
+        });
+    }
+
+}
 
 function calculateArbitrage() {
     if (isSafeToCalculateArbitrage()) {
         const depthSnapshots = BinanceApi.getDepthSnapshots(MarketCache.tickers.watching);
         MarketCache.pruneDepthCacheAboveThreshold(depthSnapshots, CONFIG.DEPTH.SIZE);
 
-        const {calculationTime, successCount, errorCount, results} = CalculationNode.cycle(
+        const { calculationTime, successCount, errorCount, results } = CalculationNode.cycle(
             MarketCache.relationships,
             depthSnapshots,
             (e) => logger.performance.warn(e),
@@ -124,7 +217,7 @@ function isSafeToCalculateArbitrage() {
 function displayCalculationResults(successCount, errorCount, calculationTime) {
     if (errorCount === 0) return;
     const totalCalculations = successCount + errorCount;
-    logger.performance.warn(`Completed ${successCount}/${totalCalculations} (${((successCount/totalCalculations) * 100).toFixed(1)}%) calculations in ${calculationTime} ms`);
+    logger.performance.warn(`Completed ${successCount}/${totalCalculations} (${((successCount / totalCalculations) * 100).toFixed(1)}%) calculations in ${calculationTime} ms`);
 }
 
 function displayStatusUpdate() {

@@ -3,12 +3,17 @@ const logger = require('./Loggers');
 const BinanceApi = require('./BinanceApi');
 const CalculationNode = require('./CalculationNode');
 const Util = require('./Util');
+const { v4: uuidv4 } = require('uuid');
+var azure = require('azure-storage');
 
 const ArbitrageExecution = {
 
     inProgressIds: new Set(),
     inProgressSymbols: new Set(),
     attemptedPositions: {},
+    missedOpportunities: [],
+    potentialOpportunities: [],
+    executedOpportunities: [],
 
     executeCalculatedPosition(calculated) {
         const startTime = Date.now();
@@ -32,6 +37,7 @@ const ArbitrageExecution = {
         return ArbitrageExecution.getExecutionStrategy()(calculated)
             .then((actual) => {
                 logger.execution.info(`${CONFIG.TRADING.ENABLED ? 'Executed' : 'Test: Executed'} ${calculated.id} position in ${Date.now() - startTime} ms`);
+                ArbitrageExecution.logExecutedOpportunity(calculated);
 
                 // Results are only collected when a trade is executed
                 if (!CONFIG.TRADING.ENABLED) return;
@@ -99,9 +105,79 @@ const ArbitrageExecution = {
             });
     },
 
+    logMissedOpportunity(opportunity, reason) {
+
+        //Define an instance of the entity generator
+        var entGen = azure.TableUtilities.entityGenerator;
+
+        this.missedOpportunities.push({
+            PartitionKey: entGen.String('binance'),
+            RowKey: entGen.String(uuidv4()),
+            id: entGen.String(opportunity.id),
+            reason: entGen.String(reason),
+            steps: entGen.String(opportunity.trade.ab.method + "-" + opportunity.trade.bc.method + "-" + opportunity.trade.ca.method),
+            profit: entGen.String(opportunity.percent),
+            a_spent: entGen.String(opportunity.a.spent),
+            a_earned: entGen.String(opportunity.a.earned),
+            a_delta: entGen.String(opportunity.a.delta),
+            b_spent: entGen.String(opportunity.b.spent),
+            b_earned: entGen.String(opportunity.b.earned),
+            b_delta: entGen.String(opportunity.b.delta),
+            c_spent: entGen.String(opportunity.c.spent),
+            c_earned: entGen.String(opportunity.c.earned),
+            c_delta: entGen.String(opportunity.c.delta)
+        });
+    },
+
+    logPotentialOpportunity(opportunity) {
+
+        //Define an instance of the entity generator
+        var entGen = azure.TableUtilities.entityGenerator;
+
+        this.potentialOpportunities.push({
+            PartitionKey: entGen.String('binance'),
+            RowKey: entGen.String(uuidv4()),
+            id: entGen.String(opportunity.id), 
+            steps: entGen.String(opportunity.trade.ab.method + "-" + opportunity.trade.bc.method + "-" + opportunity.trade.ca.method),
+            profit: entGen.String(opportunity.percent),
+            a_spent: entGen.String(opportunity.a.spent),
+            a_earned: entGen.String(opportunity.a.earned),
+            a_delta: entGen.String(opportunity.a.delta),
+            b_spent: entGen.String(opportunity.b.spent),
+            b_earned: entGen.String(opportunity.b.earned),
+            b_delta: entGen.String(opportunity.b.delta),
+            c_spent: entGen.String(opportunity.c.spent),
+            c_earned: entGen.String(opportunity.c.earned),
+            c_delta: entGen.String(opportunity.c.delta)
+        });
+    },
+
+    logExecutedOpportunity(opportunity) {
+
+        //Define an instance of the entity generator
+        var entGen = azure.TableUtilities.entityGenerator;
+
+        this.executedOpportunities.push({
+            PartitionKey: entGen.String('binance'),
+            RowKey: entGen.String(uuidv4()),
+            id: entGen.String(opportunity.id), 
+            steps: entGen.String(opportunity.trade.ab.method + "-" + opportunity.trade.bc.method + "-" + opportunity.trade.ca.method),
+            profit: entGen.String(opportunity.percent),
+            a_spent: entGen.String(opportunity.a.spent),
+            a_earned: entGen.String(opportunity.a.earned),
+            a_delta: entGen.String(opportunity.a.delta),
+            b_spent: entGen.String(opportunity.b.spent),
+            b_earned: entGen.String(opportunity.b.earned),
+            b_delta: entGen.String(opportunity.b.delta),
+            c_spent: entGen.String(opportunity.c.spent),
+            c_earned: entGen.String(opportunity.c.earned),
+            c_delta: entGen.String(opportunity.c.delta)
+        });
+    },
+
     isSafeToExecute(calculated) {
         const now = Date.now();
-        const { symbol } = calculated.trade;
+        const { symbol } = calculated.trade;  
 
         // Profit Threshold is Not Satisfied
         if (calculated.percent < CONFIG.TRADING.PROFIT_THRESHOLD) return false;
@@ -110,36 +186,44 @@ const ArbitrageExecution = {
 
         // Age Threshold is Not Satisfied
         const ageInMilliseconds = now - Math.min(calculated.depth.ab.eventTime, calculated.depth.bc.eventTime, calculated.depth.ca.eventTime);
-        if (isNaN(ageInMilliseconds) || ageInMilliseconds > CONFIG.TRADING.AGE_THRESHOLD){
+        if (isNaN(ageInMilliseconds) || ageInMilliseconds > CONFIG.TRADING.AGE_THRESHOLD) {
             logger.execution.trace(`Age threshold of ${CONFIG.TRADING.AGE_THRESHOLD} ms exceeded. Blocking the execution for this opportunity.`);
+            ArbitrageExecution.logMissedOpportunity(calculated, "age_threshold");
             return false;
         }
 
         if (CONFIG.TRADING.EXECUTION_CAP && ArbitrageExecution.getAttemptedPositionsCount() >= CONFIG.TRADING.EXECUTION_CAP) {
             logger.execution.trace(`Blocking execution because ${ArbitrageExecution.getAttemptedPositionsCount()} executions have been attempted`);
+            ArbitrageExecution.logMissedOpportunity(calculated, "execution_cap");
             return false;
         }
         if (ArbitrageExecution.inProgressSymbols.has(symbol.a)) {
             logger.execution.trace(`Blocking execution because ${symbol.a} is currently involved in an execution`);
+            ArbitrageExecution.logMissedOpportunity(calculated, "a_execution_busy");
             return false;
         }
         if (ArbitrageExecution.inProgressSymbols.has(symbol.b)) {
             logger.execution.trace(`Blocking execution because ${symbol.b} is currently involved in an execution`);
+            ArbitrageExecution.logMissedOpportunity(calculated, "b_execution_busy");
             return false;
         }
         if (ArbitrageExecution.inProgressSymbols.has(symbol.c)) {
             logger.execution.trace(`Blocking execution because ${symbol.c} is currently involved in an execution`);
+            ArbitrageExecution.logMissedOpportunity(calculated, "c_execution_busy");
             return false;
         }
         if (ArbitrageExecution.getAttemptedPositionsCountInLastSecond() > 1) {
             logger.execution.trace(`Blocking execution because ${ArbitrageExecution.getAttemptedPositionsCountInLastSecond()} position has already been attempted in the last second`);
+            ArbitrageExecution.logMissedOpportunity(calculated, "already_attempted");
             return false;
         }
         if (Object.entries(ArbitrageExecution.attemptedPositions).find(([executionTime, id]) => id === calculated.id && executionTime > (now - CONFIG.TRADING.AGE_THRESHOLD))) {
             logger.execution.trace(`Blocking execution to avoid double executing the same position`);
+            ArbitrageExecution.logMissedOpportunity(calculated, "potential_duplicate");
             return false;
         }
 
+        ArbitrageExecution.logPotentialOpportunity(calculated);
         return true;
     },
 
