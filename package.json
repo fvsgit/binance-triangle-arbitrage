@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "blessed": "^0.1.81",
+    "dotenv": "^8.2.0",
+    "jshint": "^2.12.0",
     "node-binance-api": "^0.11.11",
     "pino": "^6.5.0",
     "pino-pretty": "^4.1.0",

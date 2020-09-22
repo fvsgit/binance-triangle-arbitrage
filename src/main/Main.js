@@ -1,4 +1,10 @@
+require('dotenv').config();
 const CONFIG = require('../../config/config');
+
+//Set the API key from the environment variables
+CONFIG.KEYS.API = process.env.API_KEY;
+CONFIG.KEYS.SECRET = process.env.API_SECRET;
+
 const logger = require('./Loggers');
 const Util = require('./Util');
 const si = require('systeminformation');
