@@ -106,9 +106,14 @@ const ArbitrageExecution = {
         // Profit Threshold is Not Satisfied
         if (calculated.percent < CONFIG.TRADING.PROFIT_THRESHOLD) return false;
 
+        logger.execution.trace(`Potential opportunity found: ${calculated.percent}`);
+
         // Age Threshold is Not Satisfied
         const ageInMilliseconds = now - Math.min(calculated.depth.ab.eventTime, calculated.depth.bc.eventTime, calculated.depth.ca.eventTime);
-        if (isNaN(ageInMilliseconds) || ageInMilliseconds > CONFIG.TRADING.AGE_THRESHOLD) return false;
+        if (isNaN(ageInMilliseconds) || ageInMilliseconds > CONFIG.TRADING.AGE_THRESHOLD){
+            logger.execution.trace(`Age threshold of ${CONFIG.TRADING.AGE_THRESHOLD} ms exceeded. Blocking the execution for this opportunity.`);
+            return false;
+        }
 
         if (CONFIG.TRADING.EXECUTION_CAP && ArbitrageExecution.getAttemptedPositionsCount() >= CONFIG.TRADING.EXECUTION_CAP) {
             logger.execution.trace(`Blocking execution because ${ArbitrageExecution.getAttemptedPositionsCount()} executions have been attempted`);
