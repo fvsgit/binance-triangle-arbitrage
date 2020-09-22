@@ -55,8 +55,14 @@ checkConfig()
     })
     .then(() => {
         console.log();
+        console.log(`Investment Base:        ${CONFIG.INVESTMENT.BASE}`);
+        console.log(`Investment Min:         ${CONFIG.INVESTMENT.MIN}`);
+        console.log(`Investment Max:         ${CONFIG.INVESTMENT.MAX}`);
+        console.log(`Investment Step:        ${CONFIG.INVESTMENT.STEP}`);
+        console.log();
         console.log(`Execution Strategy:     ${CONFIG.TRADING.EXECUTION_STRATEGY}`);
         console.log(`Execution Limit:        ${CONFIG.TRADING.EXECUTION_CAP} execution(s)`);
+        console.log(`Taker Fee:              ${CONFIG.TRADING.TAKER_FEE}`);
         console.log(`Profit Threshold:       ${CONFIG.TRADING.PROFIT_THRESHOLD.toFixed(2)}%`);
         console.log(`Age Threshold:          ${CONFIG.TRADING.AGE_THRESHOLD} ms`);
         console.log(`Log Level:              ${CONFIG.LOG.LEVEL}`);
